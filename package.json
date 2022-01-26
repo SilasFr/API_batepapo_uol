@@ -1,5 +1,6 @@
 {
   "name": "api_batepapo_uol",
+  "type": "module",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -20,6 +21,7 @@
   "dependencies": {
     "cors": "^2.8.5",
     "dotenv": "^14.3.2",
-    "express": "^4.17.2"
+    "express": "^4.17.2",
+    "mogodb": "^0.0.1-security"
   }
 }
