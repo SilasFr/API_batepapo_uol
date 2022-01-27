@@ -1,20 +1,21 @@
 import express, { json } from "express";
 import { MongoClient } from "mongodb";
 import dotenv from "dotenv";
-import cors from "cors";
 import dayjs from "dayjs";
+import cors from "cors";
 dotenv.config();
+
+const mongoCliente = new MongoClient(process.env.MONGO_URI);
+let db;
 
 const server = express();
 server.use(cors());
 server.use(json());
-const mongoCliente = new MongoClient(process.env.MONGO_URI);
-let db;
-mongoCliente.connect(() => {
-  db = mongoCliente.db("batepapo_uol");
-});
 
 server.post("/participants", async (req, res) => {
+  mongoCliente.connect(() => {
+    db = mongoCliente.db("batepapo_uol");
+  });
   const participant = { ...req.body, lasStatus: Date.now() };
   try {
     await db.collection("participants").insertOne(participant);
@@ -26,23 +27,33 @@ server.post("/participants", async (req, res) => {
       time: dayjs(participant.lastStatus).format("HH:mm:ss"),
     });
     res.sendStatus(201);
+    mongoCliente.close();
   } catch (error) {
     console.log(error);
     res.sendStatus(500);
+    mongoCliente.close();
   }
 });
 
 server.get("/participants", async (req, res) => {
+  mongoCliente.connect(() => {
+    db = mongoCliente.db("batepapo_uol");
+  });
   try {
     const participants = await db.collection("participants").find().toArray();
     res.send(participants);
+    mongoCliente.close();
   } catch (error) {
     console.log(error);
     res.sendStatus(500);
+    mongoCliente.close();
   }
 });
 
-server.post("/messages", (req, res) => {
+server.post("/messages", async (req, res) => {
+  mongoCliente.connect(() => {
+    db = mongoCliente.db("batepapo_uol");
+  });
   try {
     const message = {
       ...req.body,
@@ -51,13 +62,18 @@ server.post("/messages", (req, res) => {
     };
     await db.collection("messages").insertOne(message);
     res.sendStatus(201);
+    mongoCliente.close();
   } catch (error) {
     console.log(error);
     res.sendStatus(500);
+    mongoCliente.close();
   }
 });
 
 server.get("/messages", async (req, res) => {
+  mongoCliente.connect(() => {
+    db = mongoCliente.db("batepapo_uol");
+  });
   try {
     const user = req.headers.user;
     const limit = parseInt(req.query.limit);
@@ -68,23 +84,44 @@ server.get("/messages", async (req, res) => {
     } else {
       res.send(messages);
     }
+    mongoCliente.close();
   } catch (error) {
     console.log(error);
     res.sendStatus(500);
+    mongoCliente.close();
   }
 });
 
-server.post("/status", (req, res) => {});
+server.post("/status", (req, res) => {
+  mongoCliente.connect(() => {
+    db = mongoCliente.db("batepapo_uol");
+  });
+  try {
+    mongoCliente.close();
+  } catch (error) {
+    console.log(error);
+    res.send(500);
+    mongoCliente.close();
+  }
+});
 
-function messagesUserCanSee(user) {
+async function messagesUserCanSee(user) {
+  mongoCliente.connect(() => {
+    db = mongoCliente.db("batepapo_uol");
+  });
   const seeableMessages = [];
   const messages = await db.collection("messages").find().toArray();
+
+  if (!user) {
+    return messages;
+  }
 
   for (let message of messages) {
     if (message.to === "Todos" || message.to === user) {
       seeableMessages.push(message);
     }
   }
+  return seeableMessages;
 }
 
 server.listen(4000);
