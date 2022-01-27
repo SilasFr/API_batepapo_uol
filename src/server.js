@@ -59,9 +59,10 @@ server.post("/messages", (req, res) => {
 
 server.get("/messages", async (req, res) => {
   try {
+    const user = req.headers.user;
     const limit = parseInt(req.query.limit);
-    console.log(limit);
-    const messages = await db.collection("messages").find().toArray();
+    const messages = messagesUserCanSee(user);
+
     if (limit) {
       res.send(messages.slice(-limit));
     } else {
@@ -74,5 +75,16 @@ server.get("/messages", async (req, res) => {
 });
 
 server.post("/status", (req, res) => {});
+
+function messagesUserCanSee(user) {
+  const seeableMessages = [];
+  const messages = await db.collection("messages").find().toArray();
+
+  for (let message of messages) {
+    if (message.to === "Todos" || message.to === user) {
+      seeableMessages.push(message);
+    }
+  }
+}
 
 server.listen(4000);
