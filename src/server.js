@@ -1,6 +1,5 @@
-import express from "express";
-import { MongoClient, ObjectId } from "mongodb";
-import { json } from "express/lib/response";
+import express, { json } from "express";
+import { MongoClient } from "mongodb";
 import dotenv from "dotenv";
 import cors from "cors";
 import dayjs from "dayjs";
@@ -9,17 +8,16 @@ dotenv.config();
 const server = express();
 server.use(cors());
 server.use(json());
-const mongoCliente = new MongoClient("mongodb://localhost:27017");
+const mongoCliente = new MongoClient(process.env.MONGO_URI);
 let db;
 mongoCliente.connect(() => {
   db = mongoCliente.db("batepapo_uol");
 });
 
 server.post("/participants", async (req, res) => {
+  const participant = { ...req.body, lasStatus: Date.now() };
   try {
-    await db
-      .collection("participants")
-      .insertOne({ name: req.body, lastStatus: Date.now() });
+    await db.collection("participants").insertOne(participant);
     await db.collection("messages").insertOne({
       from: participant.name,
       to: "Todos",
@@ -44,9 +42,36 @@ server.get("/participants", async (req, res) => {
   }
 });
 
-server.post("/messages", (req, res) => {});
+server.post("/messages", (req, res) => {
+  try {
+    const message = {
+      ...req.body,
+      from: req.headers.user,
+      time: dayjs(Date.now).format("HH:mm:ss"),
+    };
+    await db.collection("messages").insertOne(message);
+    res.sendStatus(201);
+  } catch (error) {
+    console.log(error);
+    res.sendStatus(500);
+  }
+});
 
-server.get("/messages", (req, res) => {});
+server.get("/messages", async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit);
+    console.log(limit);
+    const messages = await db.collection("messages").find().toArray();
+    if (limit) {
+      res.send(messages.slice(-limit));
+    } else {
+      res.send(messages);
+    }
+  } catch (error) {
+    console.log(error);
+    res.sendStatus(500);
+  }
+});
 
 server.post("/status", (req, res) => {});
 
