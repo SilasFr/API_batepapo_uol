@@ -20,8 +20,10 @@
   "homepage": "https://github.com/SilasFr/API_batepapo_uol#readme",
   "dependencies": {
     "cors": "^2.8.5",
+    "dayjs": "^1.10.7",
     "dotenv": "^14.3.2",
     "express": "^4.17.2",
+    "joi": "^14.0.4",
     "mogodb": "^0.0.1-security"
   }
 }
