@@ -65,7 +65,7 @@ server.post("/messages", async (req, res) => {
     const message = {
       ...req.body,
       from: req.headers.user,
-      time: dayjs(Date.now).format("HH:mm:ss"),
+      time: dayjs(Date.now()).format("HH:mm:ss"),
     };
     await db.collection("messages").insertOne(message);
     res.sendStatus(201);
