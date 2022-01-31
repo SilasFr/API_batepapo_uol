@@ -26,11 +26,10 @@ server.post("/participants", async (req, res) => {
     res.sendStatus(422);
     return;
   }
-  const participant = { ...req.body, lasStatus: Date.now() };
+  const participant = { ...req.body, lastStatus: Date.now() };
 
   const allParticipants = await db.collection("participants").find().toArray();
   for (let user of allParticipants) {
-    console.log(user);
     if (user.name === participant.name) {
       res.sendStatus(409);
       return;
@@ -79,11 +78,20 @@ server.get("/messages", async (req, res) => {
   try {
     const user = req.headers.user;
     const limit = parseInt(req.query.limit);
-    const messages = db
+    const messages = await db
       .collection("messages")
-      .find({ $or: [{ to: "todos" }, { to: user }] });
+      .find({
+        $or: [
+          { type: "status" },
+          { type: "message" },
+          { to: user, type: "private_message" },
+          { from: user, type: "private_message" },
+        ],
+      })
+      .toArray();
     if (limit) {
       res.send(messages.slice(-limit));
+      return;
     } else {
       res.send(messages);
     }
@@ -92,39 +100,52 @@ server.get("/messages", async (req, res) => {
   }
 });
 
-server.post("/status", (req, res) => {
+server.post("/status", async (req, res) => {
   try {
+    const user = req.headers.user;
+    const userExists = await db
+      .collection("participants")
+      .findOne({ name: user });
+    if (!userExists) {
+      res.sendStatus(404);
+      return;
+    }
+
+    await db.collection("participants").updateOne(
+      {
+        _id: userExists._id,
+      },
+      { $set: { lastStatus: Date.now() } }
+    );
+    res.sendStatus(200);
   } catch (error) {
-    res.send(500);
+    res.sendStatus(500);
   }
 });
 
 setInterval(async () => {
   try {
     const limit = Date.now() - 10000;
-    const result = await db
+    const usersTimedOut = db
       .collection("participants")
-      .deleteMany({ lastStatus: { $gt: limit } });
-    console.log(result);
+      .find({ lastStatus: { $lt: limit } });
+
+    await usersTimedOut.forEach(async (userTimedOut) => {
+      await db.collection("messages").insertOne({
+        from: userTimedOut.name,
+        to: "Todos",
+        text: "sai da sala...",
+        type: "status",
+        time: dayjs(Date.now()).format("HH:mm:ss"),
+      });
+    });
+
+    const { acknowledged, deletedCount } = await db
+      .collection("participants")
+      .deleteMany({ lastStatus: { $lt: limit } });
   } catch (e) {
-    console.log(e);
+    console.log("error", e);
   }
 }, 15000);
-
-// async function messagesUserCanSee(user) {
-//   const seeableMessages = [];
-//   const messages = await db.collection("messages").find().toArray();
-
-//   if (!user) {
-//     return messages;
-//   }
-
-//   for (let message of messages) {
-//     if (message.to === "Todos" || message.to === user) {
-//       seeableMessages.push(message);
-//     }
-//   }
-//   return seeableMessages;
-// }
 
 server.listen(4000);
