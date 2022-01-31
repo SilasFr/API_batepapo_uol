@@ -20,6 +20,14 @@ const participantSchema = Joi.object().keys({
   name: Joi.string().required().min(3).max(30),
 });
 
+const messageSchema = Joi.object().keys({
+  to: Joi.string().required(),
+  text: Joi.string().required(),
+  type: Joi.string(),
+  from: Joi.string(),
+  time: Joi.date(),
+});
+
 server.post("/participants", async (req, res) => {
   const validation = Joi.validate(req.body, participantSchema);
   if (validation.error) {
